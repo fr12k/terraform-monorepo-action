@@ -135,6 +135,7 @@ function run() {
             const token = core.getInput('token', { required: true });
             const mode = core.getInput('mode', { required: true });
             const ignored = core.getInput('ignore');
+            const includes = core.getInput('includes');
             const monitored = core
                 .getInput('monitored')
                 .split(',')
@@ -152,7 +153,14 @@ function run() {
             }
             if (ignored) {
                 const globs = ignored.split('\n').map((item) => item.trim());
-                modules = ignore_1.default().add(globs).filter(modules);
+                const nonEmptyModules = modules.filter(module => module !== null && module !== undefined && module !== "");
+                modules = ignore_1.default().add(globs).filter(nonEmptyModules);
+            }
+            if (includes) {
+                const globs = includes.split('\n').map((item) => item.trim());
+                const filteredModules = modules.filter(module => module !== null && module !== undefined && module !== "");
+                const ignores = ignore_1.default().add(globs);
+                modules = filteredModules.filter(module => ignores.ignores(module));
             }
             if (modules.length) {
                 core.debug(`Found modules:${modules.map((module) => `\n- ${module}`)}`);
@@ -6155,6 +6163,14 @@ const cleanRangeBackSlash = slashes => {
 
 // '`foo/`' should not continue with the '`..`'
 const REPLACERS = [
+
+  [
+    // remove BOM
+    // TODO:
+    // Other similar zero-width characters?
+    /^\uFEFF/,
+    () => EMPTY
+  ],
 
   // > Trailing spaces are ignored unless they are quoted with backslash ("\")
   [
