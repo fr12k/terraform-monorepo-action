@@ -8,6 +8,7 @@ async function run(): Promise<void> {
     const token = core.getInput('token', { required: true })
     const mode = core.getInput('mode', { required: true })
     const ignored = core.getInput('ignore')
+    const includes = core.getInput('includes')
     const monitored = core
       .getInput('monitored')
       .split(',')
@@ -31,6 +32,14 @@ async function run(): Promise<void> {
     if (ignored) {
       const globs = ignored.split('\n').map((item) => item.trim())
       modules = ignore().add(globs).filter(modules)
+    }
+
+    if (includes) {
+      const globs = includes.split('\n').map((item) => item.trim())
+      const filteredModules = modules.filter(module => module !== null && module !== undefined && module !== "");
+      const ignores = ignore().add(globs)
+
+      modules = filteredModules.filter(module => ignores.ignores(module));
     }
 
     if (modules.length) {
