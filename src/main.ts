@@ -7,12 +7,12 @@ async function run(): Promise<void> {
   try {
     const token = core.getInput('token', { required: true })
     const mode = core.getInput('mode', { required: true })
-    const ignored = core.getInput('ignore')
-    const includes = core.getInput('includes')
+    const ignored = core.getInput('ignore') as string
+    const includes = core.getInput('includes') as string
     const monitored = core
       .getInput('monitored')
       .split(',')
-      .map((item) => item.trim())
+      .map((item: string) => item.trim())
 
     let modules: string[]
 
@@ -31,16 +31,20 @@ async function run(): Promise<void> {
 
     if (ignored) {
       const globs = ignored.split('\n').map((item) => item.trim())
-      const nonEmptyModules = modules.filter(module => module !== null && module !== undefined && module !== "");
+      const nonEmptyModules = modules.filter(
+        (module) => module !== null && module !== undefined && module !== '',
+      )
       modules = ignore().add(globs).filter(nonEmptyModules)
     }
 
     if (includes) {
       const globs = includes.split('\n').map((item) => item.trim())
-      const filteredModules = modules.filter(module => module !== null && module !== undefined && module !== "");
+      const filteredModules = modules.filter(
+        (module) => module !== null && module !== undefined && module !== '',
+      )
       const ignores = ignore().add(globs)
 
-      modules = filteredModules.filter(module => ignores.ignores(module));
+      modules = filteredModules.filter((module) => ignores.ignores(module))
     }
 
     if (modules.length) {
