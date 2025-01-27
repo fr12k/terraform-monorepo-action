@@ -153,14 +153,14 @@ function run() {
             }
             if (ignored) {
                 const globs = ignored.split('\n').map((item) => item.trim());
-                const nonEmptyModules = modules.filter(module => module !== null && module !== undefined && module !== "");
+                const nonEmptyModules = modules.filter((module) => module !== null && module !== undefined && module !== '');
                 modules = ignore_1.default().add(globs).filter(nonEmptyModules);
             }
             if (includes) {
                 const globs = includes.split('\n').map((item) => item.trim());
-                const filteredModules = modules.filter(module => module !== null && module !== undefined && module !== "");
+                const filteredModules = modules.filter((module) => module !== null && module !== undefined && module !== '');
                 const ignores = ignore_1.default().add(globs);
-                modules = filteredModules.filter(module => ignores.ignores(module));
+                modules = filteredModules.filter((module) => ignores.ignores(module));
             }
             if (modules.length) {
                 core.debug(`Found modules:${modules.map((module) => `\n- ${module}`)}`);
