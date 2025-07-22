@@ -12,7 +12,7 @@
     "@actions/github": "^6.0.1",
     "dlx": "^0.2.1",
     "http-status-codes": "^2.3.0",
-    "ignore": "^7.0.4"
+    "ignore": "^7.0.5"
   },
   "devDependencies": {
     "@octokit/webhooks-types": "^7.6.1",
