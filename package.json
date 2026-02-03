@@ -4,12 +4,12 @@
   "private": true,
   "main": "lib/main.js",
   "scripts": {
-    "build": "tsc && ncc build --source-map",
+    "build": "ncc build src/main.ts -o dist --source-map",
     "lint": "eslint src/**/*.ts"
   },
   "dependencies": {
     "@actions/core": "^2.0.2",
-    "@actions/github": "^9.0.0",
+    "@actions/github": "^8.0.1",
     "dlx": "^0.2.1",
     "http-status-codes": "^2.3.0",
     "ignore": "^7.0.5"
