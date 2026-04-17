@@ -31,8 +31,8 @@ export async function getChangedModules(
     'filename',
     monitored,
   )
-  const allModules = await getAllModules(token, monitored)
+  const allModules = new Set(await getAllModules(token, monitored))
 
   // filter to exclude deleted modules
-  return changedModules.filter((module) => allModules.includes(module))
+  return changedModules.filter((module) => allModules.has(module))
 }

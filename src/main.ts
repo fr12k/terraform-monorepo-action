@@ -12,7 +12,7 @@ async function run(): Promise<void> {
     const monitored = core
       .getInput('monitored')
       .split(',')
-      .map((item: string) => item.trim())
+      .map((item) => item.trim())
 
     let modules: string[]
 
@@ -31,24 +31,17 @@ async function run(): Promise<void> {
 
     if (ignored) {
       const globs = ignored.split('\n').map((item) => item.trim())
-      const nonEmptyModules = modules.filter(
-        (module) => module !== null && module !== undefined && module !== '',
-      )
-      modules = ignore().add(globs).filter(nonEmptyModules)
+      modules = ignore().add(globs).filter(modules)
     }
 
     if (includes) {
       const globs = includes.split('\n').map((item) => item.trim())
-      const filteredModules = modules.filter(
-        (module) => module !== null && module !== undefined && module !== '',
-      )
-      const ignores = ignore().add(globs)
-
-      modules = filteredModules.filter((module) => ignores.ignores(module))
+      const includeFilter = ignore().add(globs)
+      modules = modules.filter((module) => includeFilter.ignores(module))
     }
 
     if (modules.length) {
-      core.debug(`Found modules:${modules.map((module) => `\n- ${module}`)}`)
+      core.debug(`Found modules:${modules.map((module) => `\n- ${module}`).join('')}`)
     } else {
       core.debug('No modules found')
     }
