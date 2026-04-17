@@ -43,6 +43,9 @@ export async function getSha(
         commit_sha: ref.data.object.sha,
       })
 
+      if (!commit.data.parents.length) {
+        throw new Error('No parent commit found — cannot determine base SHA')
+      }
       base = commit.data.parents[0].sha
       head = commit.data.sha
       break
@@ -63,6 +66,8 @@ export async function getSha(
   return { base, head }
 }
 
+const IGNORED_DIRS = ['.github', '.ci', '.terraform']
+
 export function getModulePaths<T extends Record<string, unknown>>(
   files: T[] | undefined,
   pathProp: keyof T,
@@ -70,17 +75,11 @@ export function getModulePaths<T extends Record<string, unknown>>(
 ): string[] {
   const result = files?.reduce<string[]>((paths, file) => {
     const { dir, base, ext } = parse(file[pathProp] as string)
-    // const globalIgnore = ['.github', '.ci', '.terraform']
 
-    if (
-      dir.includes('.github') ||
-      dir.includes('.ci') ||
-      dir.includes('.terraform')
-    ) {
+    if (IGNORED_DIRS.some((d) => dir.includes(d))) {
       return paths
     }
     if (monitored.includes(ext) || monitored.includes(base)) {
-      // if (ext === '.tf' || base === '.terraform.lock.hcl') {
       paths.push(dir)
     }
     return paths
