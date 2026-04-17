@@ -26305,6 +26305,9 @@ async function getSha(token) {
         repo: context2.repo.repo,
         commit_sha: ref.data.object.sha
       });
+      if (!commit.data.parents.length) {
+        throw new Error("No parent commit found \u2014 cannot determine base SHA");
+      }
       base = commit.data.parents[0].sha;
       head = commit.data.sha;
       break;
@@ -26322,10 +26325,11 @@ async function getSha(token) {
   }
   return { base, head };
 }
+var IGNORED_DIRS = [".github", ".ci", ".terraform"];
 function getModulePaths(files, pathProp, monitored) {
   const result = files?.reduce((paths, file) => {
     const { dir, base, ext } = (0, import_path.parse)(file[pathProp]);
-    if (dir.includes(".github") || dir.includes(".ci") || dir.includes(".terraform")) {
+    if (IGNORED_DIRS.some((d) => dir.includes(d))) {
       return paths;
     }
     if (monitored.includes(ext) || monitored.includes(base)) {
@@ -26374,8 +26378,8 @@ async function getChangedModules(token, monitored) {
     "filename",
     monitored
   );
-  const allModules = await getAllModules(token, monitored);
-  return changedModules.filter((module2) => allModules.includes(module2));
+  const allModules = new Set(await getAllModules(token, monitored));
+  return changedModules.filter((module2) => allModules.has(module2));
 }
 
 // src/main.ts
@@ -26399,22 +26403,16 @@ async function run() {
     }
     if (ignored) {
       const globs = ignored.split("\n").map((item) => item.trim());
-      const nonEmptyModules = modules.filter(
-        (module2) => module2 !== null && module2 !== void 0 && module2 !== ""
-      );
-      modules = (0, import_ignore.default)().add(globs).filter(nonEmptyModules);
+      modules = (0, import_ignore.default)().add(globs).filter(modules);
     }
     if (includes) {
       const globs = includes.split("\n").map((item) => item.trim());
-      const filteredModules = modules.filter(
-        (module2) => module2 !== null && module2 !== void 0 && module2 !== ""
-      );
-      const ignores = (0, import_ignore.default)().add(globs);
-      modules = filteredModules.filter((module2) => ignores.ignores(module2));
+      const includeFilter = (0, import_ignore.default)().add(globs);
+      modules = modules.filter((module2) => includeFilter.ignores(module2));
     }
     if (modules.length) {
       core.debug(`Found modules:${modules.map((module2) => `
-- ${module2}`)}`);
+- ${module2}`).join("")}`);
     } else {
       core.debug("No modules found");
     }
