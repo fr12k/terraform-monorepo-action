@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.7](https://github.com/fr12k/terraform-monorepo-action/compare/v3.0.6...v3.0.7) (2026-04-17)
+
+
+### Bug Fixes
+
+* optimize module checks and update docs ([#162](https://github.com/fr12k/terraform-monorepo-action/issues/162)) ([c79fc98](https://github.com/fr12k/terraform-monorepo-action/commit/c79fc98eee53dbfd75fb18cc90a3b0d5c2db9df8))
+
 ## [3.0.0](https://github.com/fr12k/terraform-monorepo-action/compare/v2.3.1...v3.0.0) (2025-07-22)
 
 
