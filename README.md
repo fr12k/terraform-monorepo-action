@@ -9,7 +9,7 @@ jobs:
   modules:
     runs-on: ubuntu-latest
     steps:
-      - uses: theappnest/terraform-monorepo-action@master
+      - uses: fr12k/terraform-monorepo-action@v3
         id: modules
         with:
           monitored: '.tpl, .hcl, .terraform.lock.hcl'
@@ -30,8 +30,8 @@ jobs:
       run:
         working-directory: ${{ matrix.module }}
     steps:
-      - uses: actions/checkout@v2
-      - uses: hashicorp/setup-terraform@v1
+      - uses: actions/checkout@v6
+      - uses: hashicorp/setup-terraform@v4
       - run: terraform init
       - run: terraform plan
 ```
@@ -41,7 +41,8 @@ jobs:
 - `token` (optional) GitHub token. Defaults to secrets.GITHUB_TOKEN.
 - `mode` (optional) Set to `all` to return all modules or `changed` to only return modules that have changes in this PR/commit. Defaults to `changed`.
 - `ignore` (optional) List of module path globs to ignore. Uses gitignore spec.
-- `monitored` (optional) Comma seperated list of file extensions, or filenames to match to determine what is a terraform module. Defaults to .tf
+- `includes` (optional) List of module path globs to include. Uses gitignore spec.
+- `monitored` (optional) Comma separated list of file extensions, or filenames to match to determine what is a terraform module. Defaults to `.tf, .tpl, .yaml, .yml, .terraform.lock.hcl`.
 
 ## Outputs
 
