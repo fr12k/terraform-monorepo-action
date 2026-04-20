@@ -29,6 +29,8 @@ async function run(): Promise<void> {
         throw new Error(`Unknown mode: ${mode}`)
     }
 
+    modules = modules.filter((module) => module !== '')
+
     if (ignored) {
       const globs = ignored.split('\n').map((item) => item.trim())
       modules = ignore().add(globs).filter(modules)
