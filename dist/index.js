@@ -26401,6 +26401,7 @@ async function run() {
       default:
         throw new Error(`Unknown mode: ${mode}`);
     }
+    modules = modules.filter((module2) => module2 !== "");
     if (ignored) {
       const globs = ignored.split("\n").map((item) => item.trim());
       modules = (0, import_ignore.default)().add(globs).filter(modules);
