@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.8](https://github.com/fr12k/terraform-monorepo-action/compare/v3.0.7...v3.0.8) (2026-04-20)
+
+
+### Bug Fixes
+
+* path must not be empty ([#164](https://github.com/fr12k/terraform-monorepo-action/issues/164)) ([1611902](https://github.com/fr12k/terraform-monorepo-action/commit/161190203391fe7a20b84b8e3dc7c68655e7049c))
+
 ## [3.0.7](https://github.com/fr12k/terraform-monorepo-action/compare/v3.0.6...v3.0.7) (2026-04-17)
 
 
