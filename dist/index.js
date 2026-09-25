@@ -19223,6 +19223,13 @@ var require_ignore = __commonJS({
       }
     };
     var WILDCARD = "[^\\/]*";
+    var separatorAfter = (run2, at) => {
+      let separator = EMPTY;
+      for (let index = at + 1; index < run2.length && !run2[index].wildcard; index++) {
+        separator += run2[index].single;
+      }
+      return separator;
+    };
     var pinWildcards = (source) => {
       if (source.indexOf(WILDCARD) < 0) {
         return source;
@@ -19292,7 +19299,7 @@ var require_ignore = __commonJS({
             out += token.single;
             return;
           }
-          out += at === lastWildcard ? WILDCARD : `(?:(?!${run2[at + 1].single})[^\\/])*`;
+          out += at === lastWildcard ? WILDCARD : `(?:(?!${separatorAfter(run2, at)})[^\\/])*`;
         });
         run2 = [];
       };
