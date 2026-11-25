@@ -19155,7 +19155,6 @@ var require_ignore = __commonJS({
     var ESCAPE = "\\";
     var REGEX_LITERAL_SPECIAL = /[.*+?()[\]{}^$|\\/]/;
     var BOM = "\uFEFF";
-    var REGEX_INVALID_TRAILING_BACKSLASH = /(?:[^\\]|^)\\$/;
     var REGEX_ANCHORED_GLOBSTAR = /^\/\*{2,}$/;
     var REGEX_REPLACE_LEADING_EXCAPED_EXCLAMATION = /^\\!/;
     var REGEX_REPLACE_LEADING_EXCAPED_HASH = /^\\#/;
@@ -19217,13 +19216,9 @@ var require_ignore = __commonJS({
           return null;
         }
         if (char === ESCAPE) {
-          const escaped = pattern[index + 1];
-          if (escaped === UNDEFINED) {
-            return null;
-          }
+          const escaped = pattern[++index];
           body += escapeMember(escaped);
           prev = escaped;
-          index++;
         } else if (char === "-" && prev && index + 1 < length && pattern[index + 1] !== "]") {
           index++;
           let to = pattern[index];
@@ -19288,7 +19283,7 @@ var require_ignore = __commonJS({
         const char = pattern[index];
         if (char === ESCAPE) {
           const escaped = pattern[index + 1];
-          if (escaped === UNDEFINED || escaped === SLASH && index + 2 === length) {
+          if (escaped === SLASH && index + 2 === length) {
             out += hold(NEVER_MATCH);
           } else if (escaped === "*" || escaped === "[" || escaped === SPACE) {
             out += pattern.slice(index, index + 2);
@@ -19322,6 +19317,7 @@ var require_ignore = __commonJS({
     };
     var DIRECT = null;
     var REGEX_INNER_SLASH = /\/(?!$)/;
+    var WILDCARD = "[^\\/]*";
     var REPLACERS = [
       // Replace (\ ) with ' '
       // Only a space: an escaped tab or other whitespace is already a literal by
@@ -19402,7 +19398,7 @@ var require_ignore = __commonJS({
         // Notice that the '*'s have been replaced as '\\*'
         /^\^*(?:\\\*\\\*\\\/)+/,
         // '**/foo' <-> 'foo'
-        () => "^(?:.*\\/)?",
+        () => "(?:^|\\/)",
         "*"
       ],
       // starting
@@ -19412,7 +19408,7 @@ var require_ignore = __commonJS({
         // If starts with '**', adding a '^' to the regular expression also works
         DIRECT,
         (source, pattern) => {
-          if (!source || source[0] === "^") {
+          if (!source || source[0] === "^" || source[0] === "(") {
             return source;
           }
           const anchor = !REGEX_INNER_SLASH.test(pattern) ? "(?:^|\\/)" : "^";
@@ -19436,13 +19432,13 @@ var require_ignore = __commonJS({
         // 'abc.*/' -> go
         // 'abc.*'  -> skip this rule,
         //    coz trailing single wildcard will be handed by [trailing wildcard]
-        /(^|[^\\]+)(\\\*)+(?=.+)/g,
+        /(^|[^\\])(?:\\\*)+(?!$)/g,
         // '*.js' matches '.js'
         // '*.js' doesn't match 'abc'
-        (_, p1, p2) => {
-          const unescaped = p2.replace(/\\\*/g, "[^\\/]*");
-          return p1 + unescaped;
-        },
+        // 1. An asterisk "*" matches anything except a slash.
+        // 2. Other consecutive asterisks are considered regular asterisks
+        //    and collapse into one non-slash wildcard run.
+        (_, p1) => p1 + WILDCARD,
         "*"
       ],
       // trailing wildcard, held apart from a literal star
@@ -19519,8 +19515,7 @@ var require_ignore = __commonJS({
       return `${prefix}(?=$|\\/$)`;
     };
     var REGEX_REPLACE_TRAILING_DOUBLESTAR = /\uE001$/;
-    var replaceTrailingDoublestar = () => ".+(?=$|\\/$)";
-    var WILDCARD = "[^\\/]*";
+    var replaceTrailingDoublestar = () => "[\\s\\S]";
     var separatorAfter = (run2, at) => {
       let separator = EMPTY;
       for (let index = at + 1; index < run2.length && !run2[index].wildcard; index++) {
@@ -19644,7 +19639,7 @@ var require_ignore = __commonJS({
       }
       const head = prefix.slice(0, -1);
       const last = prefix[prefix.length - 1];
-      return last === TRAILING_WILDCARD ? `${head}$` : last === TRAILING_DOUBLESTAR ? `${head}.*$` : NEVER_MATCH;
+      return last === TRAILING_WILDCARD ? `${head}$` : last === TRAILING_DOUBLESTAR ? head : NEVER_MATCH;
     };
     var matchesBasename = (body) => {
       const index = body.indexOf(SLASH);
@@ -19672,8 +19667,8 @@ var require_ignore = __commonJS({
       return cut < 0 ? EMPTY : path.slice(0, cut + 1);
     };
     var isString = (subject) => typeof subject === "string";
-    var checkPattern = (pattern) => pattern && isString(pattern) && !REGEX_INVALID_TRAILING_BACKSLASH.test(pattern);
-    var splitPattern = (pattern) => pattern.split(REGEX_SPLITALL_CRLF).filter(Boolean);
+    var checkPattern = (pattern) => pattern && isString(pattern);
+    var splitPattern = (pattern) => (pattern[pattern.length - 1] === "\r" ? pattern.slice(0, -1) : pattern).split(REGEX_SPLITALL_CRLF).filter(Boolean);
     var IgnoreRule = class {
       constructor(pattern, mark, body, ignoreCase, negative, prefix) {
         this.pattern = pattern;
@@ -19713,30 +19708,40 @@ var require_ignore = __commonJS({
         return define(this, key, regex);
       }
     };
-    var isLineEnd = (char) => char === "\r" || char === "\n";
-    var trimEnd = (body) => {
-      let end = body.length;
-      while (end && isLineEnd(body[end - 1])) {
-        end--;
+    var hasTrailingBackslash = (str) => {
+      let count = 0;
+      while (str[str.length - count - 1] === ESCAPE) {
+        count++;
       }
-      const lineEnd = end;
-      while (end && body[end - 1] === SPACE) {
-        end--;
+      return count % 2 === 1;
+    };
+    var trimEnd = (body, stripLineEnd) => {
+      let lineEnd = body.length;
+      let end;
+      for (; ; ) {
+        if (stripLineEnd && body[lineEnd - 1] === "\r") {
+          lineEnd--;
+        }
+        end = lineEnd;
+        while (body[end - 1] === SPACE) {
+          end--;
+        }
+        if (!stripLineEnd || body[end - 1] !== "\n") {
+          break;
+        }
+        lineEnd = end - 1;
       }
       if (end === lineEnd) {
-        return body.slice(0, end);
+        return body.slice(0, lineEnd);
       }
       let backslashes = 0;
-      while (backslashes < end && body[end - backslashes - 1] === ESCAPE) {
+      while (body[end - backslashes - 1] === ESCAPE) {
         backslashes++;
       }
       return backslashes % 2 ? body.slice(0, end - 1) + SPACE : body.slice(0, end);
     };
-    var createRule = ({
-      pattern,
-      mark
-    }, ignoreCase) => {
-      let body = pattern[0] === BOM ? pattern.slice(1) : pattern;
+    var createRule = (pattern, mark, ignoreCase, stripLineEnd, stripBOM) => {
+      let body = stripBOM && pattern[0] === BOM ? pattern.slice(1) : pattern;
       if (body[0] === "#") {
         return;
       }
@@ -19746,10 +19751,10 @@ var require_ignore = __commonJS({
         body = body.slice(1);
       }
       const last = body[body.length - 1];
-      if (last === SPACE || last === "\r" || last === "\n") {
-        body = trimEnd(body);
+      if (last === SPACE || stripLineEnd && (last === "\r" || last === "\n")) {
+        body = trimEnd(body, stripLineEnd);
       }
-      if (!body) {
+      if (!body || hasTrailingBackslash(body)) {
         return;
       }
       body = body.replace(REGEX_REPLACE_LEADING_EXCAPED_EXCLAMATION, "!").replace(REGEX_REPLACE_LEADING_EXCAPED_HASH, "#");
@@ -19769,19 +19774,22 @@ var require_ignore = __commonJS({
         this._rules = [];
         this._basenameCount = 0;
       }
-      _add(pattern) {
+      _add(pattern, index) {
         if (pattern && pattern[KEY_IGNORE]) {
           this._rules = this._rules.concat(pattern._rules._rules);
           this._basenameCount += pattern._rules._basenameCount;
           this._added = true;
           return;
         }
-        if (isString(pattern)) {
-          pattern = {
-            pattern
-          };
-        }
-        const rule = checkPattern(pattern.pattern) && createRule(pattern, this._ignoreCase);
+        const isStr = isString(pattern);
+        const raw = isStr ? pattern : pattern.pattern;
+        const rule = checkPattern(raw) && createRule(
+          raw,
+          isStr ? UNDEFINED : pattern.mark,
+          this._ignoreCase,
+          !this._split,
+          this._stripBOM && !index
+        );
         if (rule) {
           this._added = true;
           this._rules.push(rule);
@@ -19793,8 +19801,10 @@ var require_ignore = __commonJS({
       // @param {Array<string> | string | Ignore} pattern
       add(pattern) {
         this._added = false;
+        this._split = isString(pattern);
+        this._stripBOM = !this._split || pattern[0] === BOM;
         makeArray(
-          isString(pattern) ? splitPattern(pattern) : pattern
+          this._split ? splitPattern(pattern) : pattern
         ).forEach(this._add, this);
         if (this._added) {
           this._literalRules = UNDEFINED;
@@ -19904,6 +19914,7 @@ var require_ignore = __commonJS({
     };
     checkPath.isNotRelative = isNotRelative;
     checkPath.convert = (p) => p;
+    var convertPath = (target) => isString(target) && checkPath.convert(target);
     var Ignore = class {
       constructor({
         ignorecase = true,
@@ -19930,18 +19941,21 @@ var require_ignore = __commonJS({
         return this.add(pattern);
       }
       // @returns {TestResult}
-      _test(originalPath, cache) {
-        const path = originalPath && checkPath.convert(originalPath);
+      _test(originalPath, cache, path) {
         checkPath(
           path,
           originalPath,
           this._strictPathCheck ? throwError : RETURN_FALSE
         );
-        return this._t(path, cache);
+        return path ? this._t(path, cache) : {
+          ignored: false,
+          unignored: false
+        };
       }
-      checkIgnore(path) {
-        if (path.charCodeAt(path.length - 1) !== SLASH_CODE) {
-          return this.test(path);
+      checkIgnore(target) {
+        const path = convertPath(target);
+        if (!path || path.charCodeAt(path.length - 1) !== SLASH_CODE) {
+          return this._test(target, this._testCache, path);
         }
         const dir = this._t(path, this._testCache);
         if (dir.ignored) {
@@ -19959,7 +19973,7 @@ var require_ignore = __commonJS({
         return cache[path] = parent && parent.ignored ? parent : this._rules.test(path, MODE_IGNORE);
       }
       ignores(path) {
-        return this._test(path, this._ignoreCache).ignored;
+        return this._test(path, this._ignoreCache, convertPath(path)).ignored;
       }
       createFilter() {
         return (path) => !this.ignores(path);
@@ -19969,11 +19983,11 @@ var require_ignore = __commonJS({
       }
       // @returns {TestResult}
       test(path) {
-        return this._test(path, this._testCache);
+        return this._test(path, this._testCache, convertPath(path));
       }
     };
     var factory = (options) => new Ignore(options);
-    var isPathValid = (path) => checkPath(path && checkPath.convert(path), path, RETURN_FALSE);
+    var isPathValid = (path) => checkPath(convertPath(path), path, RETURN_FALSE);
     var setupWindows = () => {
       const makePosix = (str) => /^\\\\\?\\/.test(str) || /["<>|\u0000-\u001F]+/u.test(str) ? str : str.replace(/\\/g, "/");
       checkPath.convert = makePosix;
